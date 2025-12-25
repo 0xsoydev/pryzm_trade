@@ -173,7 +173,7 @@ pub mod amm_dex_capstone {
 
         let transfer_output_accounts = anchor_spl::token::Transfer {
             from: output_vault.to_account_info(),
-            to: ctx.accounts.payer.to_account_info(),
+            to: output_token.to_account_info(),
             authority: ctx.accounts.pool.to_account_info(),
         };
 
@@ -193,6 +193,76 @@ pub mod amm_dex_capstone {
         );
 
         anchor_spl::token::transfer(amount_out_ctx, amount_out.try_into().unwrap())?;
+        Ok(())
+    }
+
+    pub fn withdraw(ctx: Context<Withdraw>, lp_tokens_in: u64) -> Result<()> {
+        let vault_a = &ctx.accounts.token_a_vault;
+        let vault_b = &ctx.accounts.token_b_vault;
+        let lp_mint = &ctx.accounts.lp_mint;
+
+        let amount_a = (vault_a.amount as u128)
+            .checked_mul(lp_tokens_in as u128)
+            .unwrap()
+            .checked_div(lp_mint.supply as u128)
+            .unwrap();
+
+        let amount_b = (vault_b.amount as u128)
+            .checked_mul(lp_tokens_in as u128)
+            .unwrap()
+            .checked_div(lp_mint.supply as u128)
+            .unwrap();
+
+        let burn_cpi_accounts = anchor_spl::token::Burn {
+            from: ctx.accounts.user_lp_account.to_account_info(),
+            mint: ctx.accounts.lp_mint.to_account_info(),
+            authority: ctx.accounts.payer.to_account_info(),
+        };
+
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            burn_cpi_accounts,
+        );
+
+        anchor_spl::token::burn(cpi_ctx, lp_tokens_in)?;
+
+        let seeds = &[
+            b"pool",
+            ctx.accounts.token_a_mint.to_account_info().key.as_ref(),
+            ctx.accounts.token_b_mint.to_account_info().key.as_ref(),
+            &[ctx.accounts.pool.bump],
+        ];
+
+        let signer_seeds = &[&seeds[..]];
+
+        let transfer_a_accounts = anchor_spl::token::Transfer {
+            from: ctx.accounts.token_a_vault.to_account_info(),
+            to: ctx.accounts.user_token_a.to_account_info(),
+            authority: ctx.accounts.pool.to_account_info(),
+        };
+
+        let cpi_ctx_a = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            transfer_a_accounts,
+            signer_seeds,
+        );
+
+        anchor_spl::token::transfer(cpi_ctx_a, amount_a.try_into().unwrap())?;
+
+        let transfer_b_accounts = anchor_spl::token::Transfer {
+            from: ctx.accounts.token_b_vault.to_account_info(),
+            to: ctx.accounts.user_token_b.to_account_info(),
+            authority: ctx.accounts.pool.to_account_info(),
+        };
+
+        let cpi_ctx_b = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            transfer_b_accounts,
+            signer_seeds,
+        );
+
+        anchor_spl::token::transfer(cpi_ctx_b, amount_b.try_into().unwrap())?;
+
         Ok(())
     }
 }
@@ -371,6 +441,75 @@ pub struct Swap<'info> {
         associated_token::authority = payer,
     )]
     pub user_token_b: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    pub token_a_mint: Account<'info, Mint>,
+    pub token_b_mint: Account<'info, Mint>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(
+        seeds = [b"pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+        bump = pool.bump,
+        has_one = token_a_mint,
+        has_one = token_b_mint,
+    )]
+    pub pool: Account<'info, LiquidityPool>,
+
+    #[account(
+        mut,
+        seeds = [b"vault_a", pool.key().as_ref()],
+        bump,
+        token::mint = token_a_mint,
+        token::authority = pool,
+    )]
+    pub token_a_vault: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [b"vault_b", pool.key().as_ref()],
+        bump,
+        token::mint = token_b_mint,
+        token::authority = pool,
+    )]
+    pub token_b_vault: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = payer,
+        associated_token::mint = token_a_mint,
+        associated_token::authority = payer,
+    )]
+    pub user_token_a: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = payer,
+        associated_token::mint = token_b_mint,
+        associated_token::authority = payer,
+    )]
+    pub user_token_b: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [b"lp_mint", pool.key().as_ref()],
+        bump,
+    )]
+    pub lp_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        associated_token::mint = lp_mint,
+        associated_token::authority = payer,
+    )]
+    pub user_lp_account: Account<'info, TokenAccount>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
