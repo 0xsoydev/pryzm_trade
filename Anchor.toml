@@ -12,7 +12,7 @@ amm_dex_capstone = "3bRk2JnVyZBfDMWtFXuJW6U4dakFzsWWzqWurbdsjcBX"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
