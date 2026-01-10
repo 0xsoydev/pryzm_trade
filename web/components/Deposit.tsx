@@ -24,7 +24,6 @@ interface PoolInfo {
   tokenBReserve: number;
   tokenASymbol: string;
   tokenBSymbol: string;
-  lpSupply: number; // Add LP supply for calculations
 }
 
 interface TokenInfo {
@@ -51,15 +50,14 @@ function useExistingPools() {
     
     try {
       // 1. Fetch all LiquidityPool accounts
-      const allPools = await program.account.liquidityPool.all();
+      const allPools = await (program.account as any).liquidityPool.all();
       
       // 2. For each pool, fetch vault balances and metadata
       const enrichedPools = await Promise.all(
-        allPools.map(async (pool) => {
+        allPools.map(async (pool: any) => {
           try {
             const vaultABalance = await connection.getTokenAccountBalance(pool.account.tokenAVault);
             const vaultBBalance = await connection.getTokenAccountBalance(pool.account.tokenBVault);
-            const lpMintInfo = await connection.getTokenSupply(pool.account.lpMint);
             
             // Fetch metadata for both tokens
             const [tokenAMetadata, tokenBMetadata] = await Promise.all([
@@ -78,7 +76,6 @@ function useExistingPools() {
               tokenBReserve: vaultBBalance.value.uiAmount || 0,
               tokenASymbol: tokenAMetadata?.symbol || pool.account.tokenAMint.toString().slice(0,4).toUpperCase(),
               tokenBSymbol: tokenBMetadata?.symbol || pool.account.tokenBMint.toString().slice(0,4).toUpperCase(),
-              lpSupply: lpMintInfo.value.uiAmount || 0,
             };
           } catch (e) {
             console.error("Error fetching vault balance for pool:", pool.publicKey.toString(), e);
@@ -150,25 +147,57 @@ function useWalletTokens() {
   return { tokens, refetch: fetchTokens };
 }
 
+// Hook to fetch user's LP token balance for a specific pool
+function useUserLPBalance(lpMint: PublicKey | null) {
+  const { connection } = useConnection();
+  const { publicKey } = useWallet();
+  const [balance, setBalance] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+
+  const fetchBalance = useCallback(async () => {
+    if (!publicKey || !connection || !lpMint) {
+      setBalance(0);
+      return;
+    }
+    setLoading(true);
+    try {
+      const userLpTokenAddr = await getAssociatedTokenAddress(lpMint, publicKey);
+      const accountInfo = await connection.getTokenAccountBalance(userLpTokenAddr);
+      setBalance(accountInfo.value.uiAmount || 0);
+    } catch (error) {
+      // Account might not exist yet
+      setBalance(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [publicKey, connection, lpMint]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
+
+  return { balance, loading, refetch: fetchBalance };
+}
+
 // --- Components ---
 
 function PoolCard({ pool, onDeposit, onWithdraw }: { pool: PoolInfo; onDeposit: () => void; onWithdraw: () => void }) {
   return (
-    <div className="bg-card rounded-3xl p-6 border border-border shadow-lg hover:shadow-xl transition-all hover:border-[#F0926A]/50 group flex flex-col">
+    <div className="bg-card rounded-3xl p-6 border border-border shadow-lg hover:shadow-xl transition-all hover:border-[#F0926A]/50 group">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="flex -space-x-3">
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#F0926A] to-orange-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-card shadow-md">
+            <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#F0926A] to-orange-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-card">
               {pool.tokenASymbol.slice(0,2)}
             </div>
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-card shadow-md">
+            <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-card">
               {pool.tokenBSymbol.slice(0,2)}
             </div>
           </div>
           <div>
             <h3 className="font-bold text-lg text-foreground">{pool.tokenASymbol} / {pool.tokenBSymbol}</h3>
-            <p className="text-xs text-muted-foreground font-mono truncate w-24 bg-accent/50 px-1.5 py-0.5 rounded-md">
+            <p className="text-xs text-muted-foreground font-mono truncate w-24">
               {pool.address.toString().slice(0,4)}...{pool.address.toString().slice(-4)}
             </p>
           </div>
@@ -176,36 +205,36 @@ function PoolCard({ pool, onDeposit, onWithdraw }: { pool: PoolInfo; onDeposit: 
       </div>
 
       {/* Stats */}
-      <div className="space-y-3 mb-6 bg-background/50 rounded-2xl p-4 border border-border/50 flex-grow">
+      <div className="space-y-3 mb-6 bg-background/50 rounded-2xl p-4 border border-border/50">
         <div className="flex justify-between items-center text-sm">
-          <span className="text-muted-foreground font-medium">Pool Liquidity</span>
+          <span className="text-muted-foreground">Pool Liquidity</span>
         </div>
         <div className="flex justify-between items-center text-sm">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#F0926A]" />
-            <span className="text-foreground font-medium">{pool.tokenAReserve.toLocaleString()} {pool.tokenASymbol}</span>
+            <span className="text-foreground">{pool.tokenAReserve.toLocaleString()} {pool.tokenASymbol}</span>
           </div>
         </div>
         <div className="flex justify-between items-center text-sm">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span className="text-foreground font-medium">{pool.tokenBReserve.toLocaleString()} {pool.tokenBSymbol}</span>
+            <span className="text-foreground">{pool.tokenBReserve.toLocaleString()} {pool.tokenBSymbol}</span>
           </div>
         </div>
       </div>
 
-      {/* Action */}
-      <div className="grid grid-cols-2 gap-3 mt-auto">
+      {/* Actions */}
+      <div className="flex gap-2">
         <Button 
           onClick={onDeposit} 
-          className="bg-[#F0926A] hover:bg-[#e8845c] text-white rounded-xl shadow-lg shadow-[#F0926A]/20 transition-all"
+          className="flex-1 bg-[#F0926A] hover:bg-[#e8845c] text-white rounded-xl shadow-lg shadow-[#F0926A]/20 group-hover:shadow-[#F0926A]/40 transition-all"
         >
           Deposit
         </Button>
         <Button 
           onClick={onWithdraw} 
           variant="outline"
-          className="rounded-xl border-border hover:bg-accent hover:text-accent-foreground transition-all"
+          className="flex-1 border-border hover:bg-accent rounded-xl"
         >
           Withdraw
         </Button>
@@ -232,29 +261,29 @@ function PoolList({ pools, onDeposit, onWithdraw }: { pools: PoolInfo[]; onDepos
             {/* Pool Name */}
             <div className="col-span-2 flex items-center gap-3">
               <div className="flex -space-x-2 shrink-0">
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#F0926A] to-orange-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-card shadow-sm">
+                <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#F0926A] to-orange-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-card">
                   {pool.tokenASymbol.slice(0,2)}
                 </div>
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-card shadow-sm">
+                <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-card">
                   {pool.tokenBSymbol.slice(0,2)}
                 </div>
               </div>
               <div className="min-w-0">
                 <p className="font-semibold text-foreground truncate">{pool.tokenASymbol} / {pool.tokenBSymbol}</p>
-                <p className="text-xs text-muted-foreground font-mono truncate bg-accent/50 px-1.5 py-0.5 rounded-md inline-block mt-1">
+                <p className="text-xs text-muted-foreground font-mono truncate">
                   {pool.address.toString().slice(0,4)}...{pool.address.toString().slice(-4)}
                 </p>
               </div>
             </div>
             
             {/* Liquidity */}
-            <div className="text-sm space-y-1">
-              <p className="text-foreground truncate font-medium">{pool.tokenAReserve.toLocaleString()} {pool.tokenASymbol}</p>
+            <div className="text-sm">
+              <p className="text-foreground truncate">{pool.tokenAReserve.toLocaleString()} {pool.tokenASymbol}</p>
               <p className="text-muted-foreground truncate">{pool.tokenBReserve.toLocaleString()} {pool.tokenBSymbol}</p>
             </div>
             
-            {/* Action */}
-            <div className="text-right flex justify-end gap-2">
+            {/* Actions */}
+            <div className="text-right flex gap-2 justify-end">
               <Button 
                 onClick={() => onDeposit(pool)}
                 size="sm"
@@ -266,7 +295,7 @@ function PoolList({ pools, onDeposit, onWithdraw }: { pools: PoolInfo[]; onDepos
                 onClick={() => onWithdraw(pool)}
                 size="sm"
                 variant="outline"
-                className="rounded-lg border-border hover:bg-accent"
+                className="border-border hover:bg-accent rounded-lg"
               >
                 Withdraw
               </Button>
@@ -307,6 +336,14 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
     try {
       const amountABN = new BN(parseFloat(amountA) * 1_000_000); // Assuming 6 decimals for simplicity/demo
       const amountBBN = new BN(parseFloat(amountB) * 1_000_000);
+
+      // Determine correct accounts based on sorted mints logic (program expects sorted)
+      // The pool info already has tokenAMint/tokenBMint sorted at initialization time in the program logic
+      // But we need to make sure we match the user's input to the correct vault
+      
+      // In this simple UI, we assume the pool.tokenAMint IS the first token input
+      // and pool.tokenBMint IS the second token input.
+      // The InitLP page sorts them before creating, so pool.tokenAMint < pool.tokenBMint.
 
       const userTokenAAddr = await getAssociatedTokenAddress(pool.tokenAMint, publicKey);
       const userTokenBAddr = await getAssociatedTokenAddress(pool.tokenBMint, publicKey);
@@ -357,12 +394,12 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       
-      {/* Modal */}
+      {/* Modal - Double layer card structure like Swap/InitLP */}
       <div className="relative w-full max-w-[480px] animate-in zoom-in-95 duration-200">
         <div className="bg-card rounded-3xl p-1 shadow-2xl shadow-black/20 border border-border/50">
           <div className="bg-background/50 rounded-3xl p-4">
             
-            {/* Header */}
+            {/* Header - Integrated style */}
             <div className="flex justify-between items-center mb-6 px-2">
               <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
                 <Plus className="w-5 h-5 text-[#F0926A]" />
@@ -392,7 +429,7 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
               <div className="bg-card rounded-2xl p-4 border border-border/50 hover:border-border transition-colors group">
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#F0926A] to-orange-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-[#F0926A]/20">
+                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#F0926A] to-[#F0926A]/60 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-[#F0926A]/20">
                       {pool.tokenASymbol.charAt(0)}
                     </div>
                     <span className="font-semibold text-foreground">{pool.tokenASymbol}</span>
@@ -420,7 +457,7 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
                 </div>
               </div>
 
-              {/* Plus Divider */}
+              {/* Plus Divider - Matching Swap style */}
               <div className="flex justify-center -my-3 relative z-10">
                 <div className="w-10 h-10 bg-card border-4 border-background rounded-xl flex items-center justify-center shadow-sm">
                   <Plus className="w-5 h-5 text-muted-foreground" />
@@ -431,7 +468,7 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
               <div className="bg-card rounded-2xl p-4 border border-border/50 hover:border-border transition-colors group">
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20">
+                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-blue-500/60 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20">
                       {pool.tokenBSymbol.charAt(0)}
                     </div>
                     <span className="font-semibold text-foreground">{pool.tokenBSymbol}</span>
@@ -487,33 +524,80 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
 function WithdrawModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; onClose: () => void; pool: PoolInfo | null; onSuccess: () => void }) {
   const { program } = useAnchorProgram();
   const { publicKey, sendTransaction } = useWallet();
-  const { tokens } = useWalletTokens();
+  const { connection } = useConnection();
+  const { balance: lpBalance, refetch: refetchLPBalance } = useUserLPBalance(pool?.lpMint || null);
   
-  const [amountLP, setAmountLP] = useState("");
+  const [lpAmount, setLpAmount] = useState("");
+  const [debouncedLpAmount, setDebouncedLpAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [estimatedAmountA, setEstimatedAmountA] = useState<number | null>(null);
+  const [estimatedAmountB, setEstimatedAmountB] = useState<number | null>(null);
 
-  // User's LP token balance
-  const userLpToken = tokens.find(t => t.mint === pool?.lpMint.toString());
+  // Debounce LP amount input to reduce RPC calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedLpAmount(lpAmount);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [lpAmount]);
 
-  // Estimates
-  const estimatedAmountA = pool && amountLP 
-    ? (parseFloat(amountLP) * pool.tokenAReserve) / (pool.lpSupply || 1)
-    : 0;
-  const estimatedAmountB = pool && amountLP 
-    ? (parseFloat(amountLP) * pool.tokenBReserve) / (pool.lpSupply || 1)
-    : 0;
+  // Fetch LP mint supply and calculate estimates (using debounced value)
+  useEffect(() => {
+    const calculateEstimates = async () => {
+      if (!pool || !debouncedLpAmount || !connection) {
+        setEstimatedAmountA(null);
+        setEstimatedAmountB(null);
+        return;
+      }
 
-  const handleMaxLP = () => {
-    if (userLpToken) setAmountLP(userLpToken.balance.toString());
+      try {
+        const lpMintInfo = await connection.getTokenSupply(pool.lpMint);
+        const lpSupply = lpMintInfo.value.uiAmount || 0;
+        
+        if (lpSupply === 0) {
+          setEstimatedAmountA(null);
+          setEstimatedAmountB(null);
+          return;
+        }
+
+        const lpAmountNum = parseFloat(debouncedLpAmount);
+        if (isNaN(lpAmountNum) || lpAmountNum <= 0) {
+          setEstimatedAmountA(null);
+          setEstimatedAmountB(null);
+          return;
+        }
+
+        // Calculate based on lib.rs formula:
+        // amount_a = (vault_a.amount * lp_tokens_in) / lp_mint.supply
+        // amount_b = (vault_b.amount * lp_tokens_in) / lp_mint.supply
+        const amountA = (pool.tokenAReserve * lpAmountNum) / lpSupply;
+        const amountB = (pool.tokenBReserve * lpAmountNum) / lpSupply;
+
+        setEstimatedAmountA(amountA);
+        setEstimatedAmountB(amountB);
+      } catch (error) {
+        console.error("Error calculating estimates:", error);
+        setEstimatedAmountA(null);
+        setEstimatedAmountB(null);
+      }
+    };
+
+    calculateEstimates();
+  }, [pool, debouncedLpAmount, connection]);
+
+  const handleMax = () => {
+    if (lpBalance > 0) {
+      setLpAmount(lpBalance.toString());
+    }
   };
 
   const handleWithdraw = async () => {
-    if (!pool || !publicKey || !program || !amountLP) return;
+    if (!pool || !publicKey || !program || !lpAmount) return;
     setLoading(true);
 
     try {
-      // Assuming 6 decimals for LP token
-      const lpTokensIn = new BN(parseFloat(amountLP) * 1_000_000);
+      // Convert LP amount to raw amount (assuming 6 decimals)
+      const lpAmountBN = new BN(parseFloat(lpAmount) * 1_000_000);
 
       const userTokenAAddr = await getAssociatedTokenAddress(pool.tokenAMint, publicKey);
       const userTokenBAddr = await getAssociatedTokenAddress(pool.tokenBMint, publicKey);
@@ -522,11 +606,9 @@ function WithdrawModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; 
       const transaction = new Transaction();
 
       const withdrawTx = await program.methods
-        .withdraw(lpTokensIn)
+        .withdraw(lpAmountBN)
         .accounts({
           pool: pool.address,
-          tokenAMint: pool.tokenAMint,
-          tokenBMint: pool.tokenBMint,
           tokenAVault: pool.tokenAVault,
           tokenBVault: pool.tokenBVault,
           userTokenA: userTokenAAddr,
@@ -534,8 +616,10 @@ function WithdrawModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; 
           lpMint: pool.lpMint,
           userLpAccount: userLpTokenAddr,
           payer: publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          tokenAMint: pool.tokenAMint,
+          tokenBMint: pool.tokenBMint,
           systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         }).instruction();
       
@@ -545,12 +629,19 @@ function WithdrawModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; 
       await program.provider.connection.confirmTransaction(signature, "confirmed");
       
       alert("Liquidity Withdrawn Successfully!");
-      setAmountLP("");
+      setLpAmount("");
+      refetchLPBalance();
       onSuccess();
       
     } catch (error: any) {
       console.error("Withdraw Failed:", error);
-      alert(`Withdraw failed: ${error.message}`);
+      if (error.logs) {
+        console.error("Transaction logs:", error.logs);
+      }
+      if (error.message) {
+        console.error("Error message:", error.message);
+      }
+      alert(`Withdraw failed: ${error.message || "See console for details"}`);
     } finally {
       setLoading(false);
     }
@@ -560,8 +651,10 @@ function WithdrawModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       
+      {/* Modal - Double layer card structure */}
       <div className="relative w-full max-w-[480px] animate-in zoom-in-95 duration-200">
         <div className="bg-card rounded-3xl p-1 shadow-2xl shadow-black/20 border border-border/50">
           <div className="bg-background/50 rounded-3xl p-4">
@@ -596,16 +689,16 @@ function WithdrawModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; 
               <div className="bg-card rounded-2xl p-4 border border-border/50 hover:border-border transition-colors group">
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-purple-500/20">
+                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-purple-500 to-purple-500/60 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-purple-500/20">
                       LP
                     </div>
                     <span className="font-semibold text-foreground">LP Tokens</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Wallet className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{userLpToken?.balance.toLocaleString() || "0"}</span>
+                    <span className="text-muted-foreground">{lpBalance.toLocaleString()}</span>
                     <button 
-                      onClick={handleMaxLP} 
+                      onClick={handleMax} 
                       className="text-[#F0926A] font-medium hover:text-[#e8845c] transition-colors px-2 py-0.5 rounded-lg hover:bg-[#F0926A]/10"
                     >
                       Max
@@ -614,27 +707,64 @@ function WithdrawModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; 
                 </div>
                 <input 
                   type="number" 
-                  value={amountLP}
-                  onChange={(e) => setAmountLP(e.target.value)}
+                  value={lpAmount}
+                  onChange={(e) => setLpAmount(e.target.value)}
                   placeholder="0.00"
                   className="w-full bg-transparent text-3xl font-semibold outline-none placeholder-muted-foreground/30 focus:placeholder-muted-foreground/50 transition-colors"
                 />
               </div>
 
-              {/* Estimate Output */}
-              <div className="bg-accent/30 rounded-xl p-4 border border-border/30 space-y-2">
-                <p className="text-sm font-medium text-muted-foreground mb-2">You will receive (estimated):</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-foreground">{estimatedAmountA.toLocaleString(undefined, {maximumFractionDigits: 6})} {pool.tokenASymbol}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-foreground">{estimatedAmountB.toLocaleString(undefined, {maximumFractionDigits: 6})} {pool.tokenBSymbol}</span>
+              {/* Estimated Output */}
+              {estimatedAmountA !== null && estimatedAmountB !== null && (
+                <>
+                  <div className="flex justify-center -my-3 relative z-10">
+                    <div className="w-10 h-10 bg-card border-4 border-background rounded-xl flex items-center justify-center shadow-sm">
+                      <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  <div className="bg-card rounded-2xl p-4 border border-border/50">
+                    <div className="text-sm text-muted-foreground mb-3">You will receive:</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-linear-to-br from-[#F0926A] to-[#F0926A]/60 flex items-center justify-center text-white text-xs font-bold">
+                            {pool.tokenASymbol.charAt(0)}
+                          </div>
+                          <span className="font-medium text-foreground">{pool.tokenASymbol}</span>
+                        </div>
+                        <span className="text-lg font-semibold text-foreground">
+                          {estimatedAmountA.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-linear-to-br from-blue-500 to-blue-500/60 flex items-center justify-center text-white text-xs font-bold">
+                            {pool.tokenBSymbol.charAt(0)}
+                          </div>
+                          <span className="font-medium text-foreground">{pool.tokenBSymbol}</span>
+                        </div>
+                        <span className="text-lg font-semibold text-foreground">
+                          {estimatedAmountB.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Info Panel */}
+              <div className="bg-accent/30 rounded-xl p-3 flex gap-3 border border-border/30">
+                <Info className="w-5 h-5 shrink-0 text-[#F0926A] mt-0.5" />
+                <div className="text-sm text-muted-foreground">
+                  <p>Withdrawing LP tokens will burn them and return the underlying tokens.</p>
                 </div>
               </div>
 
+              {/* Withdraw Button */}
               <Button 
                 onClick={handleWithdraw} 
-                disabled={loading || !amountLP}
+                disabled={loading || !lpAmount || parseFloat(lpAmount) <= 0 || parseFloat(lpAmount) > lpBalance}
                 className="w-full h-14 bg-[#F0926A] hover:bg-[#e8845c] text-white rounded-2xl text-lg font-semibold shadow-lg shadow-[#F0926A]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm Withdraw"}
