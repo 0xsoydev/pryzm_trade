@@ -181,54 +181,54 @@ const CreateToken = () => {
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground ml-1">Token Name</label>
               <div className="bg-card rounded-xl p-3 border border-border focus-within:border-[#F0926A]/50 transition-colors">
-                <input 
-                  type="text"
-                  value={tokenName}
-                  onChange={(e) => setTokenName(e.target.value)}
+        <input 
+          type="text"
+          value={tokenName}
+          onChange={(e) => setTokenName(e.target.value)}
                   placeholder="e.g. Solana"
                   className="w-full bg-transparent text-foreground placeholder-muted-foreground/50 focus:outline-none"
-                />
+        />
               </div>
-            </div>
+      </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Symbol Input */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground ml-1">Symbol</label>
                 <div className="bg-card rounded-xl p-3 border border-border focus-within:border-[#F0926A]/50 transition-colors">
-                  <input 
-                    type="text"
-                    value={tokenSymbol}
-                    onChange={(e) => setTokenSymbol(e.target.value)}
+        <input 
+          type="text"
+          value={tokenSymbol}
+          onChange={(e) => setTokenSymbol(e.target.value)}
                     placeholder="e.g. SOL"
                     className="w-full bg-transparent text-foreground placeholder-muted-foreground/50 focus:outline-none uppercase"
-                  />
+        />
                 </div>
-              </div>
+      </div>
 
               {/* Decimals Input */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground ml-1">Decimals</label>
                 <div className="bg-card rounded-xl p-3 border border-border focus-within:border-[#F0926A]/50 transition-colors">
-                  <input 
-                    type="number"
-                    value={decimals}
-                    onChange={(e) => setDecimals(e.target.value)}
-                    placeholder="6"
+        <input 
+          type="number"
+          value={decimals}
+          onChange={(e) => setDecimals(e.target.value)}
+          placeholder="6"
                     className="w-full bg-transparent text-foreground placeholder-muted-foreground/50 focus:outline-none"
-                  />
+        />
                 </div>
               </div>
-            </div>
+      </div>
 
             {/* Initial Supply Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground ml-1">Initial Supply</label>
               <div className="bg-card rounded-xl p-3 border border-border focus-within:border-[#F0926A]/50 transition-colors">
-                <input 
-                  type="number"
-                  value={initialSupply}
-                  onChange={(e) => setInitialSupply(e.target.value)}
+        <input 
+          type="number"
+          value={initialSupply}
+          onChange={(e) => setInitialSupply(e.target.value)}
                   placeholder="e.g. 1000000"
                   className="w-full bg-transparent text-foreground placeholder-muted-foreground/50 focus:outline-none"
                 />
@@ -244,15 +244,15 @@ const CreateToken = () => {
                   Creates a standard SPL token with metadata on Solana. Initial supply will be minted to your wallet.
                 </p>
               </div>
-            </div>
+      </div>
 
-            <Button 
-              onClick={handleCreateToken} 
+      <Button 
+        onClick={handleCreateToken} 
               disabled={loading || !wallet.publicKey || !umi || !tokenName || !tokenSymbol} 
               className="w-full h-14 bg-[#F0926A] hover:bg-[#e8845c] text-white font-semibold text-lg rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#F0926A]/20"
             >
               {loading ? (
-                <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Creating...
                 </div>

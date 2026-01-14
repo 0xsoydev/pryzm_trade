@@ -368,7 +368,7 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
           systemProgram: SystemProgram.programId,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         }).instruction();
-      
+
       transaction.add(depositTx);
 
       const signature = await sendTransaction(transaction, program.provider.connection);
@@ -378,7 +378,7 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
       setAmountA("");
       setAmountB("");
       onSuccess();
-      
+
     } catch (error: any) {
       console.error("Deposit Failed:", error);
       alert(`Deposit failed: ${error.message}`);
@@ -411,7 +411,7 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
               >
                 <X className="w-5 h-5" />
               </button>
-            </div>
+      </div>
 
             {/* Pool Info Badge */}
             <div className="mb-4 px-2">
@@ -422,7 +422,7 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
                   {pool.address.toString().slice(0, 4)}...{pool.address.toString().slice(-4)}
                 </span>
               </div>
-            </div>
+      </div>
 
             <div className="space-y-3">
               {/* Token A Input */}
@@ -445,10 +445,10 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
                     </button>
                   </div>
                 </div>
-                <input 
-                  type="number" 
-                  value={amountA}
-                  onChange={(e) => setAmountA(e.target.value)}
+        <input 
+          type="number"
+          value={amountA}
+          onChange={(e) => setAmountA(e.target.value)}
                   placeholder="0.00"
                   className="w-full bg-transparent text-3xl font-semibold outline-none placeholder-muted-foreground/30 focus:placeholder-muted-foreground/50 transition-colors"
                 />
@@ -462,7 +462,7 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
                 <div className="w-10 h-10 bg-card border-4 border-background rounded-xl flex items-center justify-center shadow-sm">
                   <Plus className="w-5 h-5 text-muted-foreground" />
                 </div>
-              </div>
+      </div>
 
               {/* Token B Input */}
               <div className="bg-card rounded-2xl p-4 border border-border/50 hover:border-border transition-colors group">
@@ -484,10 +484,10 @@ function DepositModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; o
                     </button>
                   </div>
                 </div>
-                <input 
-                  type="number" 
-                  value={amountB}
-                  onChange={(e) => setAmountB(e.target.value)}
+        <input 
+          type="number"
+          value={amountB}
+          onChange={(e) => setAmountB(e.target.value)}
                   placeholder="0.00"
                   className="w-full bg-transparent text-3xl font-semibold outline-none placeholder-muted-foreground/30 focus:placeholder-muted-foreground/50 transition-colors"
                 />
@@ -768,7 +768,7 @@ function WithdrawModal({ isOpen, onClose, pool, onSuccess }: { isOpen: boolean; 
                 className="w-full h-14 bg-[#F0926A] hover:bg-[#e8845c] text-white rounded-2xl text-lg font-semibold shadow-lg shadow-[#F0926A]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm Withdraw"}
-              </Button>
+        </Button>
             </div>
           </div>
         </div>

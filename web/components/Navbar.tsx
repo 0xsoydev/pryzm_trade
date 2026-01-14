@@ -42,15 +42,15 @@ const Navbar = () => {
               className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm"
               >
               Create Token
-              </Link>
+      </Link>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4">
           <div className="hidden md:block w-px h-6 bg-border" />
           <ThemeToggle />
           <div className="wallet-button-wrapper">
-            <WalletMultiButton />
+        <WalletMultiButton />
           </div>
         </div>
       </div>

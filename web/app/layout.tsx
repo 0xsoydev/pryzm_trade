@@ -32,14 +32,14 @@ export default function RootLayout({
       >
         <div className="page-glow" />
         <ThemeProvider>
-          <AppWalletProvider>
-            <div className="w-full max-w-7xl">
-              <Navbar />
+        <AppWalletProvider>
+          <div className="w-full max-w-7xl">
+            <Navbar />
               <main className="flex justify-center w-full min-h-[calc(100vh-6rem)] pt-24">
-                {children}
-              </main>
-            </div>
-          </AppWalletProvider>
+              {children}
+            </main>
+          </div>
+        </AppWalletProvider>
         </ThemeProvider>
       </body>
     </html>

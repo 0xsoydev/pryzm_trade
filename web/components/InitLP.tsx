@@ -310,7 +310,7 @@ const InitLP = () => {
             <button className="text-muted-foreground hover:text-foreground transition-colors">
               <RefreshCw className="w-5 h-5" onClick={() => refetch()} />
             </button>
-          </div>
+      </div>
 
           {/* Token A Section */}
           <div className="bg-card rounded-2xl p-4 mb-2 border border-border">
@@ -323,8 +323,8 @@ const InitLP = () => {
                 <button onClick={handleMaxClickA} className="text-[#F0926A] hover:text-[#e8845c] px-2 py-0.5 rounded bg-[#F0926A]/10 text-xs font-medium transition-colors">Max</button>
                 <button onClick={handleHalfClickA} className="text-[#F0926A] hover:text-[#e8845c] px-2 py-0.5 rounded bg-[#F0926A]/10 text-xs font-medium transition-colors">50%</button>
               </div>
-            </div>
-            
+      </div>
+
             <div className="flex items-center justify-between gap-4">
               <button
                 onClick={() => setShowSelectorA(true)}
@@ -342,14 +342,14 @@ const InitLP = () => {
               </button>
               
               <div className="flex-1 text-right">
-                <input
-                  type="number"
-                  value={amountA}
-                  onChange={(e) => setAmountA(e.target.value)}
+        <input 
+          type="number"
+          value={amountA}
+          onChange={(e) => setAmountA(e.target.value)}
                   placeholder="0.00"
                   className="w-full bg-transparent text-foreground text-3xl font-semibold text-right focus:outline-none placeholder-muted-foreground/50"
-                />
-              </div>
+        />
+      </div>
             </div>
           </div>
 
@@ -390,10 +390,10 @@ const InitLP = () => {
               </button>
               
               <div className="flex-1 text-right">
-                <input
-                  type="number"
-                  value={amountB}
-                  onChange={(e) => setAmountB(e.target.value)}
+        <input 
+          type="number"
+          value={amountB}
+          onChange={(e) => setAmountB(e.target.value)}
                   placeholder="0.00"
                   className="w-full bg-transparent text-foreground text-3xl font-semibold text-right focus:outline-none placeholder-muted-foreground/50"
                 />
@@ -407,7 +407,7 @@ const InitLP = () => {
               <Info className="w-4 h-4" />
               <p>Initial liquidity deposit will set the pool price.</p>
             </div>
-          </div>
+      </div>
 
           <Button 
             onClick={handleInitialize} 
@@ -415,7 +415,7 @@ const InitLP = () => {
             className="w-full mt-4 h-14 bg-[#F0926A] hover:bg-[#e8845c] text-white font-semibold text-lg rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#F0926A]/20"
           >
             {loading ? "Creating Pool..." : "Initialize & Deposit"}
-          </Button>
+        </Button>
 
         </div>
       </div>

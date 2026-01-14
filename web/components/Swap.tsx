@@ -48,18 +48,18 @@ function useWalletTokens() {
             return parsedInfo && parsedInfo.tokenAmount.uiAmount > 0;
           })
           .map(async ({ account }) => {
-            const parsedInfo = account.data.parsed?.info;
+        const parsedInfo = account.data.parsed?.info;
             const mintPubkey = new PublicKey(parsedInfo.mint);
             
             // Fetch metadata
             const metadata = await getTokenMetadata(connection, mintPubkey);
             
             return {
-              mint: parsedInfo.mint,
+            mint: parsedInfo.mint,
               symbol: metadata?.symbol || parsedInfo.mint.slice(0, 4).toUpperCase(),
               name: metadata?.name || `Token ${parsedInfo.mint.slice(0, 6)}...`,
-              balance: parsedInfo.tokenAmount.uiAmount,
-              decimals: parsedInfo.tokenAmount.decimals,
+            balance: parsedInfo.tokenAmount.uiAmount,
+            decimals: parsedInfo.tokenAmount.decimals,
             };
           })
       );
